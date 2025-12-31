@@ -1,0 +1,295 @@
+@import "tailwindcss";
+
+/* Global Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  background: black;
+  color: #e0e0e0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+#root {
+  width: 100%;
+  max-width: 1400px;
+}
+
+/* Video Effect Preview Container */
+.video-effect-preview {
+  background: white;
+  border-radius: 16px;
+
+}
+
+/* Wrapper to center the video frame */
+.video-frame-wrapper {
+  background: white;
+  text-align: center;
+  width: 700px;
+  /* Narrower, close to video frame width */
+  min-height: 400px;
+  /* Taller */
+  margin: 0 auto;
+  /* Center the wrapper */
+  border-radius: 10px;
+  padding: 20px;
+  /* Center the video frame inside */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Background Board - Colored gradient background */
+.video-board {
+  display: inline-block;
+  padding: 0;
+  /* No padding */
+  border-radius: 16px;
+}
+
+/* Video Frame - Simple frame on top of the board */
+.video-frame {
+  position: relative;
+  overflow: hidden;
+  display: block;
+  border-radius: 16px;
+
+  /* Fixed size for the frame */
+  width: 650px;
+  height: 300px;
+}
+
+/* Optional: Custom background image frame */
+.video-frame.custom-bg {
+  background: url('/frame-bg.png') center/cover;
+  background-size: 200% 200%;
+}
+
+/* Inner container to hold the actual video */
+.video-frame::before {
+  content: '';
+  position: absolute;
+  inset: 24px;
+  z-index: 0;
+}
+
+/* Gradient animation */
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Video Layer - Transform target */
+.video-layer {
+  position: relative;
+  z-index: 1;
+  /* Fill frame width */
+  height: 100%;
+  /* Fill frame height */
+  display: block;
+  transform-origin: center center;
+  will-change: transform, filter;
+  transition: none;
+  object-fit: contain;
+  /* Scale to fit, maintain aspect ratio */
+  border-radius: 16px;
+
+  /* No CSS transitions - we control everything via JS */
+}
+
+/* Hidden audio track */
+.audio-track {
+  display: none;
+}
+
+/* Video Controls */
+.video-controls {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.control-button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 12px 32px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.control-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.6);
+}
+
+.control-button:active {
+  transform: translateY(0);
+}
+
+/* Export Button */
+.export-button {
+  background: linear-gradient(135deg, #10b981, #059669);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.export-button:hover:not(:disabled) {
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.6);
+}
+
+.export-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Export Status */
+.export-status {
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-top: 10px;
+  width: 100%;
+}
+
+.export-status.error {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+}
+
+.export-status.success {
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  color: #6ee7b7;
+}
+
+/* Timeline Container */
+.timeline-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.time-display {
+  font-size: 14px;
+  font-weight: 500;
+  color: #a0a0a0;
+  min-width: 45px;
+  text-align: center;
+}
+
+.timeline-slider {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.timeline-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.6);
+  transition: all 0.2s ease;
+}
+
+.timeline-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.timeline-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.6);
+  transition: all 0.2s ease;
+}
+
+.timeline-slider::-moz-range-thumb:hover {
+  transform: scale(1.2);
+}
+
+/* Debug Info */
+.debug-info {
+  margin-top: 20px;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.debug-info p {
+  font-size: 13px;
+  color: #888;
+  margin: 4px 0;
+  font-family: 'Courier New', monospace;
+}
+
+/* App Header */
+.app-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.app-header h1 {
+  font-size: 32px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 8px;
+}
+
+.app-header p {
+  font-size: 16px;
+  color: #888;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1400px) {
+  .video-frame {
+    max-width: 100%;
+    height: auto;
+  }
+
+  .video-layer {
+    width: 100%;
+    height: auto;
+  }
+}

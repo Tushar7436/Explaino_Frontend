@@ -1,0 +1,222 @@
+{
+  "audioFile": "https://s3.ap-south-1.amazonaws.com/cdn.vocallabs.ai/recordings/session_1767009851629_644214t/processed_audio.webm?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Checksum-Mode=ENABLED&X-Amz-Credential=AKIAUJ3VUUAO7GICQNEK%2F20251229%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20251229T120545Z&X-Amz-Expires=86400&X-Amz-SignedHeaders=host&x-id=GetObject&X-Amz-Signature=6cbe7a0704292ffcd5ac42d5fb87ae55f8eb505d3615fc68e69c3787307ca1f2",
+  "displayEffects": [
+    {
+      "start": 4.08,
+      "end": 8.685,
+      "type": "highlight",
+      "target": {
+        "selector": "#dashboard",
+        "bounds": {
+          "x": 376,
+          "y": 104,
+          "width": 805,
+          "height": 482
+        }
+      },
+      "style": {
+        "dimBackground": true,
+        "outline": "click",
+        "zoom": {
+          "enabled": true,
+          "scale": 1.08
+        }
+      }
+    },
+    {
+      "start": 16.215,
+      "end": 17.880000000000003,
+      "type": "click",
+      "target": {
+        "selector": "div.hide-sm.hide-md > a.Button--primary.Button--small > span.Button-content > span.Button-label",
+        "bounds": {
+          "x": 278,
+          "y": 164,
+          "width": 25,
+          "height": 20
+        }
+      },
+      "style": {
+        "dimBackground": true,
+        "outline": "click",
+        "zoom": {
+          "enabled": true,
+          "scale": 1.08
+        }
+      }
+    },
+    {
+      "start": 18.5,
+      "end": 22.0,
+      "type": "highlight",
+      "target": {
+        "selector": "input[name='repository-name']",
+        "bounds": {
+          "x": 450,
+          "y": 250,
+          "width": 400,
+          "height": 40
+        }
+      },
+      "style": {
+        "dimBackground": true,
+        "outline": "focus",
+        "zoom": {
+          "enabled": true,
+          "scale": 1.12
+        }
+      }
+    },
+    {
+      "start": 27.0,
+      "end": 30.5,
+      "type": "highlight",
+      "target": {
+        "selector": "input[type='radio']",
+        "bounds": {
+          "x": 500,
+          "y": 350,
+          "width": 300,
+          "height": 80
+        }
+      },
+      "style": {
+        "dimBackground": true,
+        "outline": "focus",
+        "zoom": {
+          "enabled": true,
+          "scale": 1.15
+        }
+      }
+    },
+    {
+      "start": 35.5,
+      "end": 39.0,
+      "type": "highlight",
+      "target": {
+        "selector": "textarea[name='description']",
+        "bounds": {
+          "x": 400,
+          "y": 450,
+          "width": 500,
+          "height": 120
+        }
+      },
+      "style": {
+        "dimBackground": true,
+        "outline": "focus",
+        "zoom": {
+          "enabled": true,
+          "scale": 1.1
+        }
+      }
+    },
+    {
+      "start": 44.0,
+      "end": 48.5,
+      "type": "click",
+      "target": {
+        "selector": "button.create-repository",
+        "bounds": {
+          "x": 600,
+          "y": 650,
+          "width": 180,
+          "height": 45
+        }
+      },
+      "style": {
+        "dimBackground": true,
+        "outline": "click",
+        "zoom": {
+          "enabled": true,
+          "scale": 1.2
+        }
+      }
+    }
+  ],
+  "instructions": [
+    {
+      "t": 7.295,
+      "action": "click",
+      "selector": "#dashboard",
+      "bounds": {
+        "x": 376,
+        "y": 104,
+        "width": 805,
+        "height": 486
+      },
+      "metadata": {
+        "text": "Dashboard\nHome\nYou've been added to the zeroaxiis organization.\nView organization\nAdd repositories, "
+      },
+      "effects": [
+        "highlight",
+        "zoom"
+      ]
+    },
+    {
+      "t": 16.56,
+      "action": "click",
+      "selector": "div.hide-sm.hide-md > a.Button--primary.Button--small > span.Button-content > span.Button-label",
+      "bounds": {
+        "x": 278,
+        "y": 164,
+        "width": 25,
+        "height": 20
+      },
+      "metadata": {
+        "text": "New"
+      },
+      "effects": [
+        "highlight",
+        "zoom"
+      ]
+    }
+  ],
+  "narrations": [
+    {
+      "windowIndex": 0,
+      "start": 0,
+      "end": 8.5,
+      "text": "Welcome! This is your project portal, designed to keep your projects organized and accessible online, like a secure digital repository.",
+      "musicStyle": "upbeat"
+    },
+    {
+      "windowIndex": 1,
+      "start": 9,
+      "end": 17,
+      "text": "Let's begin by clicking the 'Add New' button. This is where the magic starts to happen!",
+      "musicStyle": "tech"
+    },
+    {
+      "windowIndex": 2,
+      "start": 17.5,
+      "end": 26,
+      "text": "Now, we'll enter a repository name – let's call it 'Test Seven'. And a clear description for it.",
+      "musicStyle": "calm"
+    },
+    {
+      "windowIndex": 3,
+      "start": 26.5,
+      "end": 34.5,
+      "text": "You have the flexibility to make this repository public or private, visible only to you. We'll also add a new tile here.",
+      "musicStyle": "informative"
+    },
+    {
+      "windowIndex": 4,
+      "start": 35,
+      "end": 43,
+      "text": "And importantly, we'll add a new ticket note. This will be loaded shortly. Then, we click 'Create Repository'.",
+      "musicStyle": "building"
+    },
+    {
+      "windowIndex": 5,
+      "start": 43.5,
+      "end": 52.5,
+      "text": "And there it is! Your repository is created. To share it, simply click 'Code' and copy the HTTPS link. Easy as that!",
+      "musicStyle": "successful"
+    }
+  ],
+  "processedAt": "",
+  "sessionId": "session_1767009851629_644214t",
+  "videoDuration": 52.98
+}

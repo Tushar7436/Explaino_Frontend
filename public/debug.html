@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Video Effect Test</title>
+    <style>
+        body {
+            margin: 20px;
+            font-family: monospace;
+            background: #1a1a2e;
+            color: #e0e0e0;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #667eea;
+        }
+
+        .info {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .info pre {
+            margin: 5px 0;
+            color: #4ade80;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Video Effect Debug Test</h1>
+
+        <div class="info">
+            <h3>Files Check:</h3>
+            <pre id="files-check">Checking...</pre>
+        </div>
+
+        <div class="info">
+            <h3>Instructions Data:</h3>
+            <pre id="instructions-data">Loading...</pre>
+        </div>
+
+        <div class="info">
+            <h3>Console Output:</h3>
+            <p>Open browser DevTools Console (F12) to see detailed logs</p>
+        </div>
+    </div>
+
+    <script>
+        // Check if files exist
+        async function checkFiles() {
+            const files = [
+                '/video.webm',
+                '/audio.webm',
+                '/instructions.json'
+            ];
+
+            const results = [];
+            for (const file of files) {
+                try {
+                    const response = await fetch(file, { method: 'HEAD' });
+                    results.push(`${file}: ${response.ok ? '✓ EXISTS' : '✗ NOT FOUND'}`);
+                } catch (err) {
+                    results.push(`${file}: ✗ ERROR - ${err.message}`);
+                }
+            }
+
+            document.getElementById('files-check').textContent = results.join('\n');
+        }
+
+        // Load and display instructions
+        async function loadInstructions() {
+            try {
+                const response = await fetch('/instructions.json');
+                const data = await response.json();
+
+                console.log('[DEBUG] Full instructions:', data);
+
+                const summary = {
+                    displayEffects: data.displayEffects?.length || 0,
+                    zoomEffects: data.displayEffects?.filter(e => e.style?.zoom?.enabled).length || 0,
+                    videoDuration: data.videoDuration,
+                    effects: data.displayEffects?.map(e => ({
+                        type: e.type,
+                        start: e.start,
+                        end: e.end,
+                        hasZoom: e.style?.zoom?.enabled,
+                        hasBounds: !!e.target?.bounds
+                    }))
+                };
+
+                document.getElementById('instructions-data').textContent = JSON.stringify(summary, null, 2);
+
+                console.log('[DEBUG] Effect summary:', summary);
+            } catch (err) {
+                document.getElementById('instructions-data').textContent = `ERROR: ${err.message}`;
+                console.error('[DEBUG] Failed to load instructions:', err);
+            }
+        }
+
+        checkFiles();
+        loadInstructions();
+    </script>
+</body>
+
+</html>
