@@ -1,9 +1,10 @@
 /**
  * API Service for communicating with Go (Fiber) Backend
- * Handles zoom instruction submission for video export
+ * Handles recording upload, processing, and zoom instruction submission
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const WS_BASE_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000';
 
 /**
  * Submit a zoom instruction to the backend for rendering
