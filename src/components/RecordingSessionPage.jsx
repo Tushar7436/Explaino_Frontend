@@ -1,6 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { useProcessingWebSocket } from '../hooks/useProcessingWebSocket';
 import { processSession, generateSpeech, getCompleteRecording, exportVideo } from '../services/backend-api';
+import {
+    normalizeCoordinates,
+    calculateZoomTransform,
+    computeEffectProgress,
+    getActiveEffects,
+    buildTransformString,
+    resolveZoomEffect
+} from '../utils/effectProcessor';
 
 /**
  * RecordingSessionPage - Redesigned to match Descript-style UI
@@ -27,20 +35,22 @@ export default function RecordingSessionPage({ sessionId }) {
     const [volume, setVolume] = useState(1);
     const [isMuted, setIsMuted] = useState(false);
 
+    // CSS Effects state
+    const [normalizedEffects, setNormalizedEffects] = useState([]);
+    const [recordingDimensions, setRecordingDimensions] = useState(null);
+    const videoLayerRef = useRef(null);
+    const rafRef = useRef(null);
+
     const { connected, progress, error: wsError, completed } = useProcessingWebSocket(sessionId);
 
     // Synchronize video with audio using custom controls
     useEffect(() => {
         const video = videoRef.current;
         const audio = processedAudioUrl ? aiAudioRef.current : originalAudioRef.current;
-        
+
         if (!video || !audio) {
-            console.log('[Custom Player] Missing refs - video:', !!video, 'audio:', !!audio);
             return;
         }
-
-        console.log('[Custom Player] Setting up sync. AI Audio:', !!processedAudioUrl);
-        console.log('[Custom Player] Audio src:', audio.src);
 
         const handleTimeUpdate = () => {
             setCurrentTime(video.currentTime);
@@ -53,17 +63,15 @@ export default function RecordingSessionPage({ sessionId }) {
 
         const handleVideoLoadedMetadata = () => {
             const newDuration = video.duration;
-            console.log('[Custom Player] Video metadata loaded. Duration:', newDuration, 'ReadyState:', video.readyState);
             if (newDuration && !isNaN(newDuration) && isFinite(newDuration)) {
-                setDuration(prev => prev || newDuration); // Only set if not already set
+                setDuration(prev => prev || newDuration);
             }
         };
 
         const handleAudioLoadedMetadata = () => {
             const newDuration = audio.duration;
-            console.log('[Custom Player] Audio metadata loaded. Duration:', newDuration, 'ReadyState:', audio.readyState);
             if (newDuration && !isNaN(newDuration) && isFinite(newDuration)) {
-                setDuration(prev => prev || newDuration); // Only set if not already set
+                setDuration(prev => prev || newDuration);
             }
         };
 
@@ -74,29 +82,30 @@ export default function RecordingSessionPage({ sessionId }) {
         };
 
         const handleCanPlay = () => {
-            console.log('[Custom Player] Video can play. Duration:', video.duration);
             if (video.duration && !isNaN(video.duration) && isFinite(video.duration)) {
-                setDuration(prev => prev || video.duration); // Only set if not already set
+                setDuration(prev => prev || video.duration);
             }
         };
 
         const handleAudioCanPlay = () => {
-            console.log('[Custom Player] Audio can play. Duration:', audio.duration);
             if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration)) {
-                setDuration(prev => prev || audio.duration); // Only set if not already set
+                setDuration(prev => prev || audio.duration);
             }
         };
 
         const handleAudioError = (e) => {
-            console.error('[Custom Player] Audio load error:', e);
-            console.error('[Custom Player] Audio src:', audio.src);
-            console.error('[Custom Player] Audio error code:', audio.error?.code, audio.error?.message);
+            console.error('[Custom Player] Audio load error:', audio.error?.message);
+        };
+
+        const handleVideoError = (e) => {
+            console.error('[Custom Player] Video load error:', video.error?.message);
         };
 
         video.addEventListener('timeupdate', handleTimeUpdate);
         video.addEventListener('loadedmetadata', handleVideoLoadedMetadata);
         video.addEventListener('canplay', handleCanPlay);
         video.addEventListener('ended', handleEnded);
+        video.addEventListener('error', handleVideoError);
         audio.addEventListener('loadedmetadata', handleAudioLoadedMetadata);
         audio.addEventListener('canplay', handleAudioCanPlay);
         audio.addEventListener('error', handleAudioError);
@@ -109,24 +118,19 @@ export default function RecordingSessionPage({ sessionId }) {
         audio.currentTime = 0;
         setCurrentTime(0);
 
-        // Force reload audio after setting up listeners
-        console.log('[Custom Player] Loading audio from:', audio.src);
         audio.load();
         video.load();
 
-        // Set initial duration if already loaded
         setTimeout(() => {
             if (video.readyState >= 1) {
                 const dur = video.duration;
                 if (dur && !isNaN(dur) && isFinite(dur)) {
-                    console.log('[Custom Player] Setting initial video duration:', dur);
                     setDuration(dur);
                 }
             }
             if (audio.readyState >= 1) {
                 const dur = audio.duration;
                 if (dur && !isNaN(dur) && isFinite(dur)) {
-                    console.log('[Custom Player] Setting initial audio duration:', dur);
                     setDuration(dur);
                 }
             }
@@ -137,24 +141,146 @@ export default function RecordingSessionPage({ sessionId }) {
             video.removeEventListener('loadedmetadata', handleVideoLoadedMetadata);
             video.removeEventListener('canplay', handleCanPlay);
             video.removeEventListener('ended', handleEnded);
+            video.removeEventListener('error', handleVideoError);
             audio.removeEventListener('loadedmetadata', handleAudioLoadedMetadata);
             audio.removeEventListener('canplay', handleAudioCanPlay);
             audio.removeEventListener('error', handleAudioError);
         };
     }, [processedAudioUrl]);
 
+    // Parse and normalize effects when results are available
+    useEffect(() => {
+        if (!results?.displayEffects || !videoRef.current) {
+            return;
+        }
+
+        const video = videoRef.current;
+
+        const handleMetadata = () => {
+            const recordingWidth = video.videoWidth;
+            const recordingHeight = video.videoHeight;
+
+            setRecordingDimensions({ recordingWidth, recordingHeight });
+
+            // Normalize all effect coordinates
+            const filtered = results.displayEffects
+                .filter(effect => effect.target?.bounds && effect.style?.zoom?.enabled);
+
+            const normalized = filtered.map(effect => {
+                const normalizedBounds = normalizeCoordinates(
+                    effect.target.bounds,
+                    recordingWidth,
+                    recordingHeight,
+                    recordingWidth,
+                    recordingHeight
+                );
+                return {
+                    ...effect,
+                    normalizedBounds
+                };
+            });
+
+            setNormalizedEffects(normalized);
+        };
+
+        video.addEventListener('loadedmetadata', handleMetadata);
+
+        // If metadata already loaded
+        if (video.readyState >= 1) {
+            handleMetadata();
+        }
+
+        return () => {
+            video.removeEventListener('loadedmetadata', handleMetadata);
+        };
+    }, [results]);
+
+    // Rendering loop for CSS effects
+    useEffect(() => {
+        const video = videoRef.current;
+        const videoLayer = videoLayerRef.current;
+
+        if (!video || !videoLayer || normalizedEffects.length === 0) return;
+
+        const renderFrame = () => {
+            const currentTime = video.currentTime;
+            const activeEffects = getActiveEffects(normalizedEffects, currentTime);
+
+            if (activeEffects.length > 0) {
+                const effect = resolveZoomEffect(activeEffects);
+
+                if (effect) {
+                    const { centerX, centerY, autoScale } = effect.normalizedBounds;
+                    const targetScale = autoScale || effect.style.zoom.scale;
+
+                    const progress = computeEffectProgress(
+                        currentTime,
+                        effect.start,
+                        effect.end,
+                        0.25,
+                        0.25
+                    );
+
+                    const { scale, translateX, translateY } = calculateZoomTransform(
+                        progress,
+                        centerX,
+                        centerY,
+                        targetScale
+                    );
+
+                    const transformString = buildTransformString(translateX, translateY, scale);
+                    videoLayer.style.transform = transformString;
+                }
+            } else {
+                videoLayer.style.transform = 'translate(0px, 0px) scale(1)';
+            }
+
+            if (!video.paused && !video.ended) {
+                rafRef.current = requestAnimationFrame(renderFrame);
+            }
+        };
+
+        const handlePlay = () => {
+            if (rafRef.current) {
+                cancelAnimationFrame(rafRef.current);
+            }
+            rafRef.current = requestAnimationFrame(renderFrame);
+        };
+
+        const handlePause = () => {
+            if (rafRef.current) {
+                cancelAnimationFrame(rafRef.current);
+                rafRef.current = null;
+            }
+        };
+
+        video.addEventListener('play', handlePlay);
+        video.addEventListener('pause', handlePause);
+
+        if (!video.paused && !video.ended) {
+            rafRef.current = requestAnimationFrame(renderFrame);
+        }
+
+        return () => {
+            video.removeEventListener('play', handlePlay);
+            video.removeEventListener('pause', handlePause);
+            if (rafRef.current) {
+                cancelAnimationFrame(rafRef.current);
+            }
+        };
+    }, [normalizedEffects]);
+
     // Custom play/pause handler
     const togglePlayPause = () => {
         const video = videoRef.current;
         const audio = processedAudioUrl ? aiAudioRef.current : originalAudioRef.current;
-        
+
         if (!video || !audio) return;
 
         if (isPlaying) {
             video.pause();
             audio.pause();
             setIsPlaying(false);
-            console.log('[Custom Player] Paused');
         } else {
             const playPromises = [
                 video.play().catch(err => console.error('[Custom Player] Video play error:', err)),
@@ -162,7 +288,6 @@ export default function RecordingSessionPage({ sessionId }) {
             ];
             Promise.all(playPromises).then(() => {
                 setIsPlaying(true);
-                console.log('[Custom Player] Playing');
             });
         }
     };
@@ -171,7 +296,7 @@ export default function RecordingSessionPage({ sessionId }) {
     const handleSeek = (e) => {
         const video = videoRef.current;
         const audio = processedAudioUrl ? aiAudioRef.current : originalAudioRef.current;
-        
+
         if (!video || !audio || !progressBarRef.current) return;
 
         const rect = progressBarRef.current.getBoundingClientRect();
@@ -181,7 +306,6 @@ export default function RecordingSessionPage({ sessionId }) {
         video.currentTime = newTime;
         audio.currentTime = newTime;
         setCurrentTime(newTime);
-        console.log('[Custom Player] Seeked to:', newTime);
     };
 
     // Custom volume handler
@@ -189,7 +313,7 @@ export default function RecordingSessionPage({ sessionId }) {
         const newVolume = parseFloat(e.target.value);
         const video = videoRef.current;
         const audio = processedAudioUrl ? aiAudioRef.current : originalAudioRef.current;
-        
+
         setVolume(newVolume);
         setIsMuted(false);
         if (video) video.volume = newVolume;
@@ -200,7 +324,7 @@ export default function RecordingSessionPage({ sessionId }) {
     const toggleMute = () => {
         const video = videoRef.current;
         const audio = processedAudioUrl ? aiAudioRef.current : originalAudioRef.current;
-        
+
         const newMuted = !isMuted;
         setIsMuted(newMuted);
         if (video) video.muted = newMuted;
@@ -220,26 +344,41 @@ export default function RecordingSessionPage({ sessionId }) {
         if (!sessionId) return;
 
         const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-        setVideoUrl(`${API_BASE}/uploads/video_${sessionId}.webm`);
-        setAudioUrl(`${API_BASE}/uploads/audio_${sessionId}.webm`);
 
         // Auto-start processing
         const startProcessing = async () => {
             try {
                 setPreparing(true);
                 setProcessing(true);
-                console.log('[DEBUG] Starting processing for session:', sessionId);
                 const response = await processSession(sessionId);
-                console.log('[DEBUG] Processing response:', response);
-                console.log('[DEBUG] Narrations:', response.narrations);
-                console.log('[DEBUG] Narrations count:', response.narrations?.length || 0);
-                
-                // Set duration from backend if available (webm files often report Infinity)
+
+                // Get video and audio URLs from backend response
+                let videoUrlFromBackend = response.videoUrl;
+                let audioUrlFromBackend = response.audioUrl;
+
+                // Add API_BASE prefix if URLs are relative
+                if (videoUrlFromBackend && !videoUrlFromBackend.startsWith('http')) {
+                    videoUrlFromBackend = videoUrlFromBackend.startsWith('/')
+                        ? `${API_BASE}${videoUrlFromBackend}`
+                        : `${API_BASE}/${videoUrlFromBackend}`;
+                }
+                if (audioUrlFromBackend && !audioUrlFromBackend.startsWith('http')) {
+                    audioUrlFromBackend = audioUrlFromBackend.startsWith('/')
+                        ? `${API_BASE}${audioUrlFromBackend}`
+                        : `${API_BASE}/${audioUrlFromBackend}`;
+                }
+
+                // Fallback to old pattern if backend doesn't provide URLs
+                const finalVideoUrl = videoUrlFromBackend || `${API_BASE}/uploads/video_${sessionId}.webm`;
+                const finalAudioUrl = audioUrlFromBackend || `${API_BASE}/uploads/audio_${sessionId}.webm`;
+
+                setVideoUrl(finalVideoUrl);
+                setAudioUrl(finalAudioUrl);
+
                 if (response.videoDuration && response.videoDuration > 0) {
-                    console.log('[DEBUG] Setting duration from backend:', response.videoDuration);
                     setDuration(response.videoDuration);
                 }
-                
+
                 setResults(response);
                 setPreparing(false);
                 setProcessing(false);
@@ -264,21 +403,18 @@ export default function RecordingSessionPage({ sessionId }) {
         setError(null);
 
         try {
-            console.log('[Session] Generating speech with ElevenLabs for:', sessionId);
             const response = await generateSpeech(sessionId);
-            console.log('[Session] Speech generation complete!', response);
-            
+
             // Update audio URL - ensure proper path formatting
             const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
             let audioUrl = response.processedAudioUrl;
-            
+
             if (!audioUrl.startsWith('http')) {
                 // Add leading slash if missing
                 audioUrl = audioUrl.startsWith('/') ? audioUrl : `/${audioUrl}`;
                 audioUrl = `${API_BASE}${audioUrl}`;
             }
-            
-            console.log('[Audio] Full audio URL:', audioUrl);
+
             setProcessedAudioUrl(audioUrl);
             setGeneratingSpeech(false);
 
@@ -291,10 +427,10 @@ export default function RecordingSessionPage({ sessionId }) {
 
     if (!sessionId) {
         return (
-            <div style={{ 
-                height: '100vh', 
-                display: 'flex', 
-                alignItems: 'center', 
+            <div style={{
+                height: '100vh',
+                display: 'flex',
+                alignItems: 'center',
                 justifyContent: 'center',
                 backgroundColor: '#1e1e2e'
             }}>
@@ -306,21 +442,21 @@ export default function RecordingSessionPage({ sessionId }) {
     // Show loading state
     if (preparing) {
         return (
-            <div style={{ 
-                height: '100vh', 
-                display: 'flex', 
+            <div style={{
+                height: '100vh',
+                display: 'flex',
                 flexDirection: 'column',
-                alignItems: 'center', 
+                alignItems: 'center',
                 justifyContent: 'center',
                 backgroundColor: '#1e1e2e',
                 gap: '1.5rem'
             }}>
-                <div style={{ 
+                <div style={{
                     fontSize: '3rem',
                     animation: 'spin 1s linear infinite'
                 }}>⚙️</div>
-                <h1 style={{ 
-                    color: '#fff', 
+                <h1 style={{
+                    color: '#fff',
                     fontSize: '1.5rem',
                     fontWeight: '500'
                 }}>Wait preparing script for your video...</h1>
@@ -355,8 +491,8 @@ export default function RecordingSessionPage({ sessionId }) {
                 backgroundColor: '#252538'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <h1 style={{ 
-                        color: '#fff', 
+                    <h1 style={{
+                        color: '#fff',
                         fontSize: '1.25rem',
                         fontWeight: '600',
                         margin: 0
@@ -591,7 +727,7 @@ export default function RecordingSessionPage({ sessionId }) {
                     }}>
                         <span>🎬</span>
                         <span>Background</span>
-                        <span style={{ 
+                        <span style={{
                             padding: '0.25rem 0.5rem',
                             backgroundColor: 'rgba(255,255,255,0.2)',
                             borderRadius: '4px',
@@ -662,9 +798,12 @@ export default function RecordingSessionPage({ sessionId }) {
                             {videoUrl && (
                                 <>
                                     <video
-                                        ref={videoRef}
-                                        style={{ 
-                                            width: '100%', 
+                                        ref={(el) => {
+                                            videoRef.current = el;
+                                            videoLayerRef.current = el;
+                                        }}
+                                        style={{
+                                            width: '100%',
                                             height: '100%',
                                             display: 'block'
                                         }}
@@ -685,7 +824,7 @@ export default function RecordingSessionPage({ sessionId }) {
                                         gap: '8px'
                                     }}>
                                         {/* Progress Bar */}
-                                        <div 
+                                        <div
                                             ref={progressBarRef}
                                             onClick={handleSeek}
                                             style={{
@@ -791,8 +930,8 @@ export default function RecordingSessionPage({ sessionId }) {
 
                         {/* Hidden Audio Elements - Synchronized with video */}
                         {audioUrl && (
-                            <audio 
-                                ref={originalAudioRef} 
+                            <audio
+                                ref={originalAudioRef}
                                 style={{ display: 'none' }}
                                 preload="auto"
                             >
@@ -801,8 +940,8 @@ export default function RecordingSessionPage({ sessionId }) {
                         )}
 
                         {processedAudioUrl && (
-                            <audio 
-                                ref={aiAudioRef} 
+                            <audio
+                                ref={aiAudioRef}
                                 style={{ display: 'none' }}
                                 preload="auto"
                             >
